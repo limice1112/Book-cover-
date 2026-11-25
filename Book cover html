@@ -1,0 +1,1466 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Обложка книги · Мұқаба · Book cover</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Lobster&family=Montserrat:wght@800&family=Oswald:wght@700&family=PT+Sans:wght@400;700&family=PT+Serif:wght@700&family=Playfair+Display:wght@700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root{
+  --bg:#e8ecf4;
+  --sf:#ffffff;
+  --sf-glass:rgba(255,255,255,.78);
+  --ink:#16203b;
+  --mut:#525d82;
+  --ln:#c9d1e4;
+  --ac:#2954e0;
+  --ac-h:#1e44c4;
+  --on:#ffffff;
+  --glow:rgba(41,84,224,.22);
+  --sh:rgba(12,20,48,.16);
+}
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  padding-left:env(safe-area-inset-left,0px);
+  padding-right:env(safe-area-inset-right,0px);
+}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme=light]){
+    --bg:#121829;
+    --sf:#1c2440;
+    --sf-glass:rgba(24,32,56,.82);
+    --ink:#edf0fb;
+    --mut:#9ba7c9;
+    --ln:#36416a;
+    --ac:#8aa4ff;
+    --ac-h:#a3b8ff;
+    --on:#0e1433;
+    --glow:rgba(138,164,255,.25);
+    --sh:rgba(0,0,0,.42);
+  }
+}
+:root[data-theme=dark]{
+  --bg:#121829;
+  --sf:#1c2440;
+  --sf-glass:rgba(24,32,56,.82);
+  --ink:#edf0fb;
+  --mut:#9ba7c9;
+  --ln:#36416a;
+  --ac:#8aa4ff;
+  --ac-h:#a3b8ff;
+  --on:#0e1433;
+  --glow:rgba(138,164,255,.25);
+  --sh:rgba(0,0,0,.42);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);overflow-x:hidden}
+*,*::before,*::after{box-sizing:inherit}
+body{
+  margin:0;
+  min-height:100dvh;
+  background:var(--bg);
+  color:var(--ink);
+  font:16px/1.42 "PT Sans",system-ui,sans-serif;
+  overflow-x:hidden;
+  transition:background-color .5s ease,color .35s ease;
+}
+body::before{
+  content:"";
+  position:fixed;
+  inset:0 0 auto;
+  height:env(safe-area-inset-top,0px);
+  background:var(--bg);
+  z-index:20;
+  opacity:.88;
+}
+
+/* Ambient animated canvas backdrop */
+#bg-cv{
+  position:fixed;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:0;
+  pointer-events:none;
+}
+
+/* Main layout above ambient background */
+header,main{position:relative;z-index:2}
+header{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 14px 6px;
+  max-width:1040px;
+  margin:0 auto;
+}
+.hdr-r{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+h1{font-size:20px;margin:0;letter-spacing:-.01em}
+
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.chip,.btn,.pri,.tp,.start-btn,.th-btn{
+  font:inherit;
+  cursor:pointer;
+  transition:transform .16s cubic-bezier(.22,1,.36,1),background-color .22s ease,border-color .22s ease,box-shadow .22s ease,color .22s ease;
+}
+.chip,.th-btn{
+  border:1px solid var(--ln);
+  background:var(--sf-glass);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  color:var(--ink);
+  padding:7px 12px;
+  border-radius:999px;
+}
+.chip:hover,.th-btn:hover,.btn:hover{
+  transform:translateY(-1px);
+  border-color:var(--ac);
+  box-shadow:0 4px 12px var(--sh);
+}
+.chip:active,.th-btn:active,.btn:active,.pri:active,.tp:active,.start-btn:active{
+  transform:scale(.96);
+}
+.chip[aria-pressed=true]{
+  background:var(--ac);
+  color:var(--on);
+  border-color:var(--ac);
+  box-shadow:0 4px 14px var(--glow);
+}
+
+/* Stage & 3D Viewport */
+.stage{
+  position:sticky;
+  top:env(safe-area-inset-top,0px);
+  z-index:5;
+  padding:6px 14px 10px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+  touch-action:pan-y;
+}
+.book-stage{
+  position:relative;
+  width:100%;
+  max-width:340px;
+  height:290px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  touch-action:pan-y;
+  user-select:none;
+  -webkit-user-select:none;
+  cursor:grab;
+}
+.book-stage:active{cursor:grabbing}
+.book-glow{
+  position:absolute;
+  width:76%;
+  height:76%;
+  border-radius:50%;
+  background:radial-gradient(circle,var(--stage-glow,rgba(41,84,224,.34)) 0%,transparent 70%);
+  filter:blur(22px);
+  pointer-events:none;
+  transition:background .6s ease,opacity .6s ease;
+}
+#gl-wrap{
+  position:relative;
+  width:100%;
+  height:100%;
+  touch-action:pan-y;
+}
+#gl-wrap.flying{
+  position:fixed;
+  inset:0;
+  width:100vw;
+  height:100dvh;
+  z-index:101;
+  pointer-events:none;
+}
+#gl{
+  display:block;
+  width:100%;
+  height:100%;
+  touch-action:pan-y;
+}
+#cv{display:none}
+
+.row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:center;
+  min-height:40px;
+}
+.pri{
+  background:var(--ac);
+  color:var(--on);
+  border:0;
+  border-radius:11px;
+  padding:10px 16px;
+  font-weight:700;
+  box-shadow:0 6px 18px var(--glow);
+}
+.pri:hover{
+  background:var(--ac-h);
+  transform:translateY(-1px);
+  box-shadow:0 8px 22px var(--glow);
+}
+.rot-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-weight:700;
+  font-size:14px;
+  padding:9px 13px;
+}
+.rot-btn svg{width:16px;height:16px;transition:transform .5s ease}
+.rot-btn[aria-pressed=true] svg{animation:spinSlow 6s linear infinite}
+@keyframes spinSlow{to{transform:rotate(360deg)}}
+
+#dim,.mut{color:var(--mut);font-size:13px}
+#msg{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  font-size:13px;
+  font-weight:700;
+  padding:5px 11px;
+  border-radius:999px;
+  background:var(--ac);
+  color:var(--on);
+  opacity:0;
+  transform:translateY(6px) scale(.92);
+  pointer-events:none;
+  transition:opacity .28s ease,transform .28s cubic-bezier(.22,1,.36,1);
+}
+#msg.show{
+  opacity:1;
+  transform:translateY(0) scale(1);
+}
+
+/* Controls & Panels */
+.ctl{padding:4px 14px 32px}
+.tabs{margin:4px 0 12px}
+.panel{
+  background:var(--sf-glass);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border:1px solid var(--ln);
+  border-radius:16px;
+  padding:14px;
+  box-shadow:0 8px 24px var(--sh);
+}
+.panel:not([hidden]){animation:panelIn .34s cubic-bezier(.22,1,.36,1) both}
+@keyframes panelIn{
+  from{opacity:0;transform:translateY(12px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+.tg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tp{
+  height:68px;
+  border:0;
+  border-radius:11px;
+  font-weight:700;
+  font-size:14px;
+  padding:6px;
+  box-shadow:0 4px 12px rgba(0,0,0,.14);
+}
+.tp:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(0,0,0,.22)}
+.tp[aria-pressed=true]{outline:3px solid var(--ac);outline-offset:2px}
+
+.f{display:grid;gap:5px;margin:0 0 14px}
+.f2{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin:0 0 14px}
+.f2 label{display:flex;gap:8px;align-items:center;cursor:pointer}
+input[type=text],select{
+  font:inherit;
+  padding:9px 11px;
+  border:1px solid var(--ln);
+  border-radius:9px;
+  background:var(--sf);
+  color:var(--ink);
+  width:100%;
+  transition:border-color .2s ease,box-shadow .2s ease;
+}
+input[type=text]:focus,select:focus{
+  border-color:var(--ac);
+  box-shadow:0 0 0 3px var(--glow);
+  outline:none;
+}
+input[type=color]{width:44px;height:34px;padding:0;border:1px solid var(--ln);border-radius:7px;background:none;cursor:pointer}
+input[type=range]{width:100%;accent-color:var(--ac);cursor:pointer}
+.btn{
+  position:relative;
+  display:inline-block;
+  border:1.5px dashed var(--ac);
+  color:var(--ac);
+  background:var(--sf);
+  border-radius:10px;
+  padding:10px 14px;
+  margin:0 8px 14px 0;
+  font-weight:700;
+}
+.btn input{position:absolute;opacity:0;width:1px;height:1px}
+#ow{
+  margin-top:14px;
+  background:var(--sf-glass);
+  border:1px solid var(--ln);
+  border-radius:14px;
+  padding:12px;
+}
+#ow img{max-width:100%;border-radius:8px;margin-top:8px;display:block}
+:focus-visible,.btn:has(:focus-visible){outline:3px solid var(--ac);outline-offset:2px}
+
+/* Staggered UI Entrance after splash */
+body.intro-active header,
+body.intro-active main{
+  opacity:0;
+  transform:translateY(18px);
+  pointer-events:none;
+}
+body.ui-ready header{animation:staggerUp .55s cubic-bezier(.22,1,.36,1) .04s both}
+body.ui-ready .stage{animation:staggerUp .55s cubic-bezier(.22,1,.36,1) .12s both}
+body.ui-ready .tabs{animation:staggerUp .55s cubic-bezier(.22,1,.36,1) .20s both}
+body.ui-ready .ctl .panel:not([hidden]){animation:staggerUp .55s cubic-bezier(.22,1,.36,1) .28s both}
+@keyframes staggerUp{
+  from{opacity:0;transform:translateY(18px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+/* Full-screen Intro Splash Overlay */
+#splash{
+  position:fixed;
+  inset:0;
+  z-index:100;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:max(14px,env(safe-area-inset-top,14px)) max(14px,env(safe-area-inset-right,14px)) max(14px,env(safe-area-inset-bottom,14px)) max(14px,env(safe-area-inset-left,14px));
+  background:radial-gradient(circle at 50% 42%,transparent 0%,rgba(10,16,34,.28) 100%);
+  transition:opacity .6s cubic-bezier(.22,1,.36,1),transform .6s cubic-bezier(.22,1,.36,1);
+}
+#splash.closing{
+  opacity:0;
+  transform:scale(1.03);
+  pointer-events:none;
+}
+#splash[hidden]{display:none}
+.splash-card{
+  position:relative;
+  z-index:102;
+  width:100%;
+  max-width:460px;
+  border-radius:22px;
+  padding:20px 18px 22px;
+  background:rgba(255,255,255,.72);
+  border:1px solid rgba(255,255,255,.65);
+  box-shadow:0 20px 50px rgba(10,18,46,.24);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:14px;
+}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme=light]) .splash-card{
+    background:rgba(18,24,43,.74);
+    border-color:rgba(138,164,255,.24);
+    box-shadow:0 22px 54px rgba(0,0,0,.55);
+  }
+}
+:root[data-theme=dark] .splash-card{
+  background:rgba(18,24,43,.74);
+  border-color:rgba(138,164,255,.24);
+  box-shadow:0 22px 54px rgba(0,0,0,.55);
+}
+.splash-top{
+  width:100%;
+  display:flex;
+  justify-content:center;
+}
+.splash-title{
+  margin:0;
+  font-size:clamp(22px,5.5vw,28px);
+  line-height:1.18;
+  font-weight:800;
+  letter-spacing:-.02em;
+}
+.splash-desc{
+  margin:0;
+  font-size:clamp(14px,3.8vw,15.5px);
+  line-height:1.48;
+  color:var(--ink);
+  opacity:.92;
+  max-width:400px;
+}
+.steps{
+  width:100%;
+  display:grid;
+  grid-template-columns:1fr auto 1fr auto 1fr;
+  align-items:center;
+  gap:4px;
+  padding:10px 8px;
+  border-radius:14px;
+  background:rgba(125,145,210,.12);
+  border:1px solid var(--ln);
+}
+.step{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  font-size:12px;
+  font-weight:700;
+  line-height:1.25;
+  color:var(--ink);
+}
+.step-ico{
+  width:34px;
+  height:34px;
+  border-radius:10px;
+  display:grid;
+  place-items:center;
+  background:var(--ac);
+  color:var(--on);
+  box-shadow:0 4px 12px var(--glow);
+}
+.step-ico svg{width:18px;height:18px}
+.step-arr{
+  color:var(--mut);
+  font-weight:700;
+  font-size:15px;
+  user-select:none;
+}
+.start-btn{
+  width:100%;
+  max-width:260px;
+  border:0;
+  border-radius:13px;
+  padding:13px 24px;
+  font-size:17px;
+  font-weight:700;
+  background:var(--ac);
+  color:var(--on);
+  box-shadow:0 10px 26px var(--glow);
+}
+.start-btn:hover{
+  background:var(--ac-h);
+  transform:translateY(-2px);
+  box-shadow:0 14px 30px var(--glow);
+}
+
+@media(min-width:820px){
+  main{
+    display:grid;
+    grid-template-columns:minmax(340px,460px) 1fr;
+    gap:28px;
+    max-width:1040px;
+    margin:0 auto;
+    align-items:start;
+  }
+  .book-stage{
+    max-width:440px;
+    height:480px;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:0.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:0.01ms !important;
+    scroll-behavior:auto !important;
+  }
+}
+</style>
+</head>
+<body class="intro-active">
+
+<canvas id="bg-cv" aria-hidden="true"></canvas>
+
+<!-- Full-screen Intro Splash -->
+<section id="splash" aria-modal="true" role="dialog" aria-labelledby="splash-h">
+  <div class="splash-card">
+    <div class="splash-top"><div class="seg" id="sp-uil"></div></div>
+    <h2 class="splash-title" id="splash-h" data-i="app"></h2>
+    <p class="splash-desc" data-i="introDesc"></p>
+    <div class="steps" aria-label="Steps">
+      <div class="step">
+        <span class="step-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        </span>
+        <span data-i="st1"></span>
+      </div>
+      <span class="step-arr" aria-hidden="true">→</span>
+      <div class="step">
+        <span class="step-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </span>
+        <span data-i="st2"></span>
+      </div>
+      <span class="step-arr" aria-hidden="true">→</span>
+      <div class="step">
+        <span class="step-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+        </span>
+        <span data-i="st3"></span>
+      </div>
+    </div>
+    <button type="button" class="start-btn" id="start-btn" data-i="start"></button>
+  </div>
+</section>
+
+<header>
+  <h1 data-i="app"></h1>
+  <div class="hdr-r">
+    <div class="seg" id="uil"></div>
+    <button type="button" class="th-btn" id="th-btn" aria-label="Theme"></button>
+  </div>
+</header>
+
+<main>
+<section class="stage">
+  <div class="book-stage" id="book-stage">
+    <div class="book-glow" id="book-glow"></div>
+    <div id="gl-wrap" class="flying"><canvas id="gl"></canvas></div>
+  </div>
+  <canvas id="cv" width="1600" height="2560" role="img"></canvas>
+  <div class="row">
+    <button class="pri" id="sv" type="button" data-i="save"></button>
+    <button class="chip rot-btn" id="rot-btn" type="button" aria-pressed="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+      <span data-i="rot"></span>
+    </button>
+    <span id="dim"></span>
+    <span id="msg" role="status" aria-live="polite"></span>
+  </div>
+</section>
+
+<section class="ctl">
+  <div class="seg tabs" id="tabs"></div>
+  <div class="panel"><div class="tg" id="tg"></div></div>
+  <div class="panel">
+    <div class="f"><span data-i="cl"></span><div class="seg" id="cll"></div></div>
+    <label class="f"><span data-i="ti"></span><input id="it" type="text"></label>
+    <label class="f"><span data-i="su"></span><input id="is" type="text"></label>
+    <label class="f"><span data-i="au"></span><input id="ia" type="text"></label>
+    <label class="f"><span data-i="fo"></span><select id="fs"></select></label>
+    <label class="f"><span data-i="fz"></span><input id="iz" type="range" min="6" max="16" step=".5"></label>
+    <div class="f"><span data-i="po"></span><div class="seg" id="pg"></div></div>
+    <div class="f2"><label><span data-i="tc"></span><input id="tc" type="color"></label><label><input id="fr" type="checkbox"><span data-i="fr"></span></label></div>
+  </div>
+  <div class="panel">
+    <div class="f2"><label><span data-i="c1"></span><input id="c1" type="color"></label><label><span data-i="c2"></span><input id="c2" type="color"></label></div>
+    <label class="btn"><span data-i="up"></span><input id="fi" type="file" accept="image/*"></label>
+    <button class="chip" id="rm" type="button" data-i="rm"></button>
+    <label class="f"><span data-i="dk"></span><input id="dk" type="range" min="0" max="80"></label>
+    <p class="mut" data-i="pv"></p>
+  </div>
+  <div class="panel"><div class="seg" id="sg"></div></div>
+  <div id="ow" hidden><p class="mut" data-i="hold"></p><img id="out" alt=""></div>
+</section>
+</main>
+
+<script>
+const $=s=>document.querySelector(s),E=(t,p)=>Object.assign(document.createElement(t),p),cv=$('#cv');
+const LG=['kk','ru','en'],LN=['Қазақша','Русский','English'];
+const L={
+kk:{
+  app:'Кітап мұқабасы',save:'PNG сақтау',saved:'Сақталды',rot:'Айналу',start:'Бастау',
+  introDesc:'Кітап мұқабасын бір минутта 3D форматта жасаңыз. Үлгіні таңдап, атауы мен суретін қосыңыз да, кітапты айналдырып көріңіз. Барлығы құрылғыңызда қалады.',
+  st1:'Үлгіні таңда',st2:'Мәтін мен суретті өзгерт',st3:'Айналдыр және PNG сақта',
+  tpl:'Үлгі',txt:'Мәтін',bg:'Фон',sz:'Өлшем',cl:'Мұқаба тілі',
+  ti:'Атауы',su:'Қосымша тақырып',au:'Автор',fo:'Қаріп',fz:'Атау өлшемі',
+  po:'Орналасуы',p0:'Жоғарыда',p1:'Ортада',p2:'Төменде',
+  tc:'Мәтін түсі',fr:'Жақтау',c1:'Түс 1',c2:'Түс 2',
+  up:'Сурет жүктеу',rm:'Суретті алып тастау',dk:'Суретті қараңғылату',
+  pv:'Сурет құрылғыңыздан шықпайды',hold:'Сақтау үшін суретті басып ұстап тұрыңыз',
+  s0:'Электронды кітап',s1:'Қағаз кітап 6×9',s2:'Wattpad',s3:'Аудиокітап',
+  th0:'Авто',th1:'Жарық',th2:'Қараңғы'
+},
+ru:{
+  app:'Обложка книги',save:'Сохранить PNG',saved:'Сохранено',rot:'Вращение',start:'Начать',
+  introDesc:'Создай 3D-обложку книги за минуту. Выбери шаблон, добавь название и фото, затем покрути книгу в 3D. Всё остаётся на твоём устройстве.',
+  st1:'Выбери шаблон',st2:'Измени текст и фото',st3:'Вращай и сохрани PNG',
+  tpl:'Шаблон',txt:'Текст',bg:'Фон',sz:'Размер',cl:'Язык обложки',
+  ti:'Название',su:'Подзаголовок',au:'Автор',fo:'Шрифт',fz:'Размер названия',
+  po:'Положение',p0:'Вверху',p1:'По центру',p2:'Внизу',
+  tc:'Цвет текста',fr:'Рамка',c1:'Цвет 1',c2:'Цвет 2',
+  up:'Загрузить фото',rm:'Убрать фото',dk:'Затемнение фото',
+  pv:'Фото остаётся на вашем устройстве',hold:'Нажмите на картинку и удерживайте, чтобы сохранить',
+  s0:'Электронная книга',s1:'Бумажная книга 6×9',s2:'Wattpad',s3:'Аудиокнига',
+  th0:'Авто',th1:'Светлая',th2:'Тёмная'
+},
+en:{
+  app:'Book cover maker',save:'Save PNG',saved:'Saved',rot:'Rotate',start:'Start',
+  introDesc:'Make a 3D book cover in a minute. Pick a template, add a title and a photo, then spin the book in 3D. Everything stays on your device.',
+  st1:'Pick a template',st2:'Edit text & photo',st3:'Spin & save PNG',
+  tpl:'Template',txt:'Text',bg:'Background',sz:'Size',cl:'Cover language',
+  ti:'Title',su:'Subtitle',au:'Author',fo:'Font',fz:'Title size',
+  po:'Position',p0:'Top',p1:'Middle',p2:'Bottom',
+  tc:'Text color',fr:'Frame',c1:'Color 1',c2:'Color 2',
+  up:'Upload photo',rm:'Remove photo',dk:'Photo darkening',
+  pv:'The photo stays on your device',hold:'Press and hold the image to save it',
+  s0:'E-book',s1:'Paperback 6×9',s2:'Wattpad',s3:'Audiobook',
+  th0:'Auto',th1:'Light',th2:'Dark'
+}};
+
+const FONTS=[
+{n:'Playfair Display',w:700,f:'"Playfair Display","PT Serif","PT Sans",serif'},
+{n:'Montserrat',w:800,f:'Montserrat,"PT Sans","PT Serif",sans-serif'},
+{n:'Oswald',w:700,f:'Oswald,"PT Sans","PT Serif",sans-serif'},
+{n:'Lobster',w:400,f:'Lobster,"PT Serif","PT Sans",cursive'},
+{n:'Caveat',w:700,f:'Caveat,"PT Sans","PT Serif",cursive'},
+{n:'PT Serif',w:700,f:'"PT Serif","PT Sans",serif'}];
+
+const TPL=[
+{n:['Мұхит','Океан','Ocean'],a:'#0b2a4a',b:'#1597a5',c:'#f2fbff',f:0,r:1},
+{n:['Күн батуы','Закат','Sunset'],a:'#2b1055',b:'#e0524d',c:'#ffe8cf',f:2,r:0},
+{n:['Орман','Лес','Forest'],a:'#16331f',b:'#5f9660',c:'#f0f7e6',f:0,r:1},
+{n:['Қағаз','Бумага','Paper'],a:'#f4ecd8',b:'#dccaa0',c:'#3a2716',f:5,r:1},
+{n:['Неон','Неон','Neon'],a:'#0c0220',b:'#4020a8',c:'#7ff5ee',f:1,r:0},
+{n:['Минимал','Минимал','Minimal'],a:'#ffffff',b:'#e4e8f0',c:'#151a2c',f:1,r:0}];
+
+const P=[[1600,2560],[1800,2700],[512,800],[1600,1600]];
+const nl=(navigator.language||'ru').slice(0,2),lg=LG.includes(nl)?nl:'ru';
+const S={
+  ui:lg,cl:lg,tab:0,tp:0,a:'#0b2a4a',b:'#1597a5',c:'#f2fbff',f:0,z:11,po:1,fr:true,dk:35,sz:0,img:null,
+  theme:0,
+  tx:{
+    kk:['Менің кітабым','Қызықты әңгіме','Автордың аты'],
+    ru:['Моя книга','Захватывающая история','Имя автора'],
+    en:['My Book','A gripping story','Author Name']
+  }
+};
+const ld=new Set();
+
+/* Reduced motion state */
+const rmQuery=window.matchMedia('(prefers-reduced-motion: reduce)');
+let reducedMotion=rmQuery.matches;
+
+/* Helper: color parsing & interpolation */
+function hex2rgb(hex){
+  const h=hex.replace('#','');
+  const n=parseInt(h.length===3?h.split('').map(c=>c+c).join(''):h,16);
+  return[(n>>16)&255,(n>>8)&255,n&255];
+}
+function lerp(a,b,t){return a+(b-a)*t}
+function lerpRgb(c1,c2,t){
+  return[Math.round(lerp(c1[0],c2[0],t)),Math.round(lerp(c1[1],c2[1],t)),Math.round(lerp(c1[2],c2[2],t))];
+}
+function rgbStr(c,a=1){return a<1?`rgba(${c[0]},${c[1]},${c[2]},${a})`:`rgb(${c[0]},${c[1]},${c[2]})`}
+function isDarkMode(){
+  if(S.theme===2)return true;
+  if(S.theme===1)return false;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+/* Text wrap & fit utilities */
+function seg(id,items,cur,fn){
+  const el=$(id);if(!el)return;
+  el.replaceChildren(...items.map(([l,v])=>{
+    const x=E('button',{type:'button',className:'chip',textContent:l});
+    x.setAttribute('aria-pressed',v===cur);x.onclick=()=>fn(v);return x}));
+}
+function wrap(g,txt,mw){
+  const o=[];let l='';
+  String(txt||'').split(/\s+/).forEach(w=>{
+    const t=l?l+' '+w:w;
+    if(g.measureText(t).width>mw&&l){o.push(l);l=w}else l=t;
+  });
+  o.push(l);return o;
+}
+function fit(g,txt,px,ft,mw){
+  let ln=[''];
+  for(let i=0;i<40;i++){
+    g.font=ft(px);ln=wrap(g,txt,mw);
+    if(Math.max(...ln.map(s=>g.measureText(s).width))<=mw)break;
+    px*=.94;
+  }
+  return{ln,px};
+}
+
+/* 2D Cover, Back Cover, and Spine Canvases */
+const backCv=document.createElement('canvas');
+backCv.width=1600;backCv.height=2560;
+const spineCv=document.createElement('canvas');
+spineCv.width=420;spineCv.height=2560;
+
+/* Cross-fade buffers for smooth ~400ms 3D texture transitions */
+const frontDispCv=document.createElement('canvas');
+frontDispCv.width=1600;frontDispCv.height=2560;
+const frontPrevCv=document.createElement('canvas');
+frontPrevCv.width=1600;frontPrevCv.height=2560;
+
+const backDispCv=document.createElement('canvas');
+backDispCv.width=1600;backDispCv.height=2560;
+const backPrevCv=document.createElement('canvas');
+backPrevCv.width=1600;backPrevCv.height=2560;
+
+const spineDispCv=document.createElement('canvas');
+spineDispCv.width=420;spineDispCv.height=2560;
+const spinePrevCv=document.createElement('canvas');
+spinePrevCv.width=420;spinePrevCv.height=2560;
+
+let texFadeT=1;
+let hopT=1;
+let texReady=false;
+
+function drawBackAndSpine(){
+  const F=FONTS[S.f],T=S.tx[S.cl];
+  const ft=p=>`${F.w} ${p}px ${F.f}`;
+  const sf=p=>`400 ${p}px "PT Sans","PT Serif",sans-serif`;
+  const af=p=>`700 ${p}px "PT Sans","PT Serif",sans-serif`;
+
+  /* Back cover (1600 x 2560) */
+  const BW=1600,BH=2560,bu=BW/100;
+  const bg=backCv.getContext('2d');
+  const bgr=bg.createLinearGradient(0,0,BW*.35,BH);
+  bgr.addColorStop(0,S.b);bgr.addColorStop(1,S.a);
+  bg.fillStyle=bgr;bg.fillRect(0,0,BW,BH);
+  bg.fillStyle='rgba(0,0,0,0.08)';bg.fillRect(0,0,BW,BH);
+
+  bg.fillStyle=bg.strokeStyle=S.c;
+  bg.textAlign='center';bg.textBaseline='middle';
+  if(S.fr){
+    bg.globalAlpha=.65;bg.lineWidth=Math.max(2,bu*.6);
+    bg.strokeRect(5*bu,5*bu,BW-10*bu,BH-10*bu);
+    bg.globalAlpha=1;
+  }
+  const bmw=BW*.74;
+  const bau=fit(bg,T[2],56,af,bmw);
+  bg.globalAlpha=.85;
+  bg.font=af(bau.px);
+  bau.ln.forEach((l,i)=>bg.fillText(l,BW/2,BH*.15+i*bau.px*1.2));
+  bg.globalAlpha=1;
+
+  const bti=fit(bg,T[0],118,ft,bmw);
+  let by=BH*.34;
+  bg.font=ft(bti.px);
+  bti.ln.forEach(l=>{bg.fillText(l,BW/2,by);by+=bti.px*1.16});
+
+  if(T[1]){
+    by+=36;
+    const bsu=fit(bg,T[1],54,sf,bmw);
+    bg.globalAlpha=.88;
+    bg.font=sf(bsu.px);
+    bsu.ln.forEach(l=>{bg.fillText(l,BW/2,by);by+=bsu.px*1.3});
+    bg.globalAlpha=1;
+  }
+
+  /* Decorative rule & minimalist ISBN barcode on back cover */
+  bg.globalAlpha=.45;
+  bg.fillRect(BW*.36,BH*.74,BW*.28,4);
+  bg.globalAlpha=.82;
+  const bars=[3,1,2,4,1,2,1,3,2,1,4,2,1,3,1,2,3,2,1,4,1,2,3,1,2,1,3];
+  const totalUnits=bars.reduce((a,b)=>a+b,0);
+  const bcW=340,bcH=110,bcX=(BW-bcW)/2,bcY=BH*.81;
+  let cx=bcX;
+  bars.forEach((u,idx)=>{
+    const w=(u/totalUnits)*bcW;
+    if(idx%2===0)bg.fillRect(cx,bcY,Math.max(2,w*.86),bcH);
+    cx+=w;
+  });
+  bg.font='700 26px "PT Sans",monospace';
+  bg.fillText('ISBN 978-601-00-2026-8',BW/2,bcY+bcH+30);
+  bg.globalAlpha=1;
+
+  /* Spine (420 x 2560 -> matches 0.42 x 2.56 without stretching) */
+  const SW=420,SH=2560;
+  const sg=spineCv.getContext('2d');
+  const sgr=sg.createLinearGradient(0,0,0,SH);
+  sgr.addColorStop(0,S.a);sgr.addColorStop(1,S.b);
+  sg.fillStyle=sgr;sg.fillRect(0,0,SW,SH);
+
+  /* Realistic spine crease shading along left/right edges */
+  const crease=sg.createLinearGradient(0,0,SW,0);
+  crease.addColorStop(0,'rgba(0,0,0,0.28)');
+  crease.addColorStop(0.14,'rgba(255,255,255,0.12)');
+  crease.addColorStop(0.5,'rgba(0,0,0,0.03)');
+  crease.addColorStop(0.86,'rgba(255,255,255,0.10)');
+  crease.addColorStop(1,'rgba(0,0,0,0.28)');
+  sg.fillStyle=crease;sg.fillRect(0,0,SW,SH);
+
+  if(S.fr){
+    sg.strokeStyle=S.c;sg.globalAlpha=.65;sg.lineWidth=8;
+    sg.strokeRect(28,44,SW-56,SH-88);
+    sg.globalAlpha=1;
+  }
+
+  /* Spine vertical text (top-to-bottom +90deg, crisp & unmirrored) */
+  sg.save();
+  sg.translate(SW/2,SH*.46);
+  sg.rotate(Math.PI/2);
+  sg.fillStyle=S.c;
+  sg.textAlign='center';
+  sg.textBaseline='middle';
+  let spPx=148;
+  const spMaxW=SH*.66;
+  while(spPx>46){
+    sg.font=`${F.w} ${spPx}px ${F.f}`;
+    if(sg.measureText(T[0]).width<=spMaxW)break;
+    spPx*=0.92;
+  }
+  sg.fillText(T[0],0,0);
+  sg.restore();
+
+  /* Author at bottom of spine */
+  if(T[2]){
+    sg.save();
+    sg.translate(SW/2,SH*.88);
+    sg.rotate(Math.PI/2);
+    sg.fillStyle=S.c;
+    sg.globalAlpha=.85;
+    sg.textAlign='center';
+    sg.textBaseline='middle';
+    let auPx=64;
+    while(auPx>28){
+      sg.font=`700 ${auPx}px "PT Sans","PT Serif",sans-serif`;
+      if(sg.measureText(T[2]).width<=SH*.18)break;
+      auPx*=0.9;
+    }
+    sg.fillText(T[2],0,0);
+    sg.restore();
+  }
+}
+
+function triggerTexTransition(withHop=false){
+  if(texReady&&!reducedMotion){
+    frontPrevCv.width=frontDispCv.width;frontPrevCv.height=frontDispCv.height;
+    frontPrevCv.getContext('2d').drawImage(frontDispCv,0,0);
+    backPrevCv.getContext('2d').drawImage(backDispCv,0,0);
+    spinePrevCv.getContext('2d').drawImage(spineDispCv,0,0);
+    texFadeT=0;
+    if(withHop)hopT=0;
+  }else{
+    texFadeT=1;
+  }
+  draw(false);
+}
+
+function syncDisplayTextures(alpha){
+  if(frontDispCv.width!==cv.width||frontDispCv.height!==cv.height){
+    frontDispCv.width=cv.width;frontDispCv.height=cv.height;
+  }
+  const fg=frontDispCv.getContext('2d');
+  const bg=backDispCv.getContext('2d');
+  const sg=spineDispCv.getContext('2d');
+  if(alpha>=1||!texReady){
+    fg.clearRect(0,0,frontDispCv.width,frontDispCv.height);
+    fg.drawImage(cv,0,0);
+    bg.clearRect(0,0,1600,2560);
+    bg.drawImage(backCv,0,0);
+    sg.clearRect(0,0,420,2560);
+    sg.drawImage(spineCv,0,0);
+    texReady=true;
+  }else{
+    fg.globalAlpha=1;
+    fg.drawImage(frontPrevCv,0,0,frontDispCv.width,frontDispCv.height);
+    fg.globalAlpha=alpha;
+    fg.drawImage(cv,0,0);
+    fg.globalAlpha=1;
+
+    bg.globalAlpha=1;
+    bg.drawImage(backPrevCv,0,0);
+    bg.globalAlpha=alpha;
+    bg.drawImage(backCv,0,0);
+    bg.globalAlpha=1;
+
+    sg.globalAlpha=1;
+    sg.drawImage(spinePrevCv,0,0);
+    sg.globalAlpha=alpha;
+    sg.drawImage(spineCv,0,0);
+    sg.globalAlpha=1;
+  }
+  if(window._bookTex){
+    window._bookTex.front.needsUpdate=true;
+    window._bookTex.back.needsUpdate=true;
+    window._bookTex.spine.needsUpdate=true;
+  }
+}
+
+function draw(smooth=false){
+  if(smooth&&texReady&&!reducedMotion){
+    triggerTexTransition(false);
+    return;
+  }
+  const[W,H]=P[S.sz],g=cv.getContext('2d');
+  if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H}
+  const u=W/100,F=FONTS[S.f],T=S.tx[S.cl],ft=p=>`${F.w} ${p}px ${F.f}`;
+  const sf=p=>`400 ${p}px "PT Sans","PT Serif",sans-serif`,af=p=>`700 ${p}px "PT Sans","PT Serif",sans-serif`;
+  const gr=g.createLinearGradient(0,0,W*.35,H);gr.addColorStop(0,S.a);gr.addColorStop(1,S.b);
+  g.fillStyle=gr;g.fillRect(0,0,W,H);
+  if(S.img){
+    const r=Math.max(W/S.img.width,H/S.img.height),w=S.img.width*r,h=S.img.height*r;
+    g.drawImage(S.img,(W-w)/2,(H-h)/2,w,h);
+    g.fillStyle=`rgba(0,0,0,${S.dk/100})`;g.fillRect(0,0,W,H);
+  }
+  g.fillStyle=g.strokeStyle=S.c;g.textAlign='center';g.textBaseline='middle';
+  if(S.fr){g.globalAlpha=.75;g.lineWidth=Math.max(2,u*.6);g.strokeRect(5*u,5*u,W-10*u,H-10*u);g.globalAlpha=1}
+  const mw=W*.78,a=fit(g,T[0],S.z*u,ft,mw),b=fit(g,T[1],a.px*.36,sf,mw),au=fit(g,T[2],S.z*u*.36,af,mw);
+  const bh=a.ln.length*a.px*1.12+(T[1]?a.px*.3+b.ln.length*b.px*1.25:0);
+  let y=S.po===0?H*.13:S.po===1?(H-bh)/2:H*.87-bh;
+  if(S.img){g.shadowColor='rgba(0,0,0,.45)';g.shadowBlur=u*1.5}
+  g.font=ft(a.px);a.ln.forEach(l=>{g.fillText(l,W/2,y+a.px*.56);y+=a.px*1.12});
+  if(T[1]){y+=a.px*.3;g.font=sf(b.px);b.ln.forEach(l=>{g.fillText(l,W/2,y+b.px*.62);y+=b.px*1.25})}
+  g.font=af(au.px);au.ln.forEach((l,i)=>g.fillText(l,W/2,(S.po===2?H*.09:H*.91)+i*au.px*1.2));
+  g.shadowBlur=0;
+
+  drawBackAndSpine();
+  syncDisplayTextures(texFadeT>=1?1:0);
+
+  if(window._bookMesh){
+    const ratio=(W/H)/(1600/2560);
+    window._bookMesh.scale.set(1,1,ratio);
+  }
+
+  $('#dim').textContent=W+'×'+H;
+  cv.setAttribute('aria-label',T[0]+', '+T[2]);
+
+  const kzSample='ӘҒҚҢӨҰҮҺІәғқңөұүһі';
+  const k=S.f+T.join('|');
+  if(!ld.has(k)&&document.fonts){
+    ld.add(k);const s=T.join(' ')+' '+kzSample;
+    Promise.all([ft(40),'400 40px "PT Sans"','700 40px "PT Sans"','700 40px "PT Serif"'].map(f=>document.fonts.load(f,s))).then(()=>draw(false)).catch(()=>{});
+  }
+}
+
+/* Background Gradient & Bokeh Particle System */
+const bgCv=$('#bg-cv'),bgCtx=bgCv.getContext('2d');
+let bgW=0,bgH=0;
+let curA=hex2rgb(S.a),curB=hex2rgb(S.b),curC=hex2rgb(S.c);
+let tgtA=curA.slice(),tgtB=curB.slice(),tgtC=curC.slice();
+let bgFadeT=1;
+let ptrX=0,ptrY=0,smoothPtrX=0,smoothPtrY=0;
+
+function updateTargetThemeColors(){
+  tgtA=hex2rgb(S.a);tgtB=hex2rgb(S.b);tgtC=hex2rgb(S.c);
+  bgFadeT=reducedMotion?1:0;
+  const glowRgb=lerpRgb(tgtA,tgtB,0.55);
+  $('#book-glow').style.setProperty('--stage-glow',rgbStr(glowRgb,isDarkMode()?0.42:0.32));
+}
+
+const particles=[];
+function initParticles(){
+  particles.length=0;
+  const isPhone=window.innerWidth<768;
+  const count=isPhone?32:54;
+  for(let i=0;i<count;i++){
+    particles.push({
+      x:Math.random(),
+      y:Math.random(),
+      r:isPhone?(2+Math.random()*5.5):(2.5+Math.random()*7.5),
+      vx:(Math.random()-.5)*0.014,
+      vy:-0.006-Math.random()*0.014,
+      depth:0.3+Math.random()*0.9,
+      phase:Math.random()*Math.PI*2,
+      alpha:0.14+Math.random()*0.34
+    });
+  }
+}
+function resizeBg(){
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  bgW=window.innerWidth;bgH=window.innerHeight;
+  bgCv.width=Math.round(bgW*dpr);
+  bgCv.height=Math.round(bgH*dpr);
+  bgCtx.setTransform(dpr,0,0,dpr,0,0);
+}
+resizeBg();
+initParticles();
+
+function renderBg(dt,elapsed){
+  if(bgFadeT<1){
+    bgFadeT=Math.min(1,bgFadeT+dt/0.6);
+    const e=bgFadeT<.5?2*bgFadeT*bgFadeT:1-Math.pow(-2*bgFadeT+2,2)/2;
+    curA=lerpRgb(curA,tgtA,Math.min(1,dt*6+e*0.18));
+    curB=lerpRgb(curB,tgtB,Math.min(1,dt*6+e*0.18));
+    curC=lerpRgb(curC,tgtC,Math.min(1,dt*6+e*0.18));
+  }else{
+    curA=tgtA;curB=tgtB;curC=tgtC;
+  }
+
+  smoothPtrX+=(ptrX-smoothPtrX)*Math.min(1,dt*5);
+  smoothPtrY+=(ptrY-smoothPtrY)*Math.min(1,dt*5);
+
+  const dark=isDarkMode();
+  const baseBg=dark?[18,24,41]:[232,236,244];
+  const mixRatio=dark?0.42:0.24;
+  const cTop=lerpRgb(baseBg,curA,mixRatio);
+  const cBot=lerpRgb(baseBg,curB,mixRatio*0.95);
+  const cOrb=lerpRgb(curB,curC,0.28);
+
+  const shiftX=reducedMotion?0:Math.sin(elapsed*0.35)*bgW*0.06+smoothPtrX*22;
+  const shiftY=reducedMotion?0:Math.cos(elapsed*0.28)*bgH*0.05+smoothPtrY*18;
+
+  const grad=bgCtx.createLinearGradient(0,0,bgW*0.4+shiftX,bgH);
+  grad.addColorStop(0,rgbStr(cTop));
+  grad.addColorStop(1,rgbStr(cBot));
+  bgCtx.fillStyle=grad;
+  bgCtx.fillRect(0,0,bgW,bgH);
+
+  const orbX=bgW*0.5+shiftX*1.4;
+  const orbY=bgH*0.36+shiftY*1.4;
+  const orbR=Math.max(bgW,bgH)*0.55;
+  const rad=bgCtx.createRadialGradient(orbX,orbY,10,orbX,orbY,orbR);
+  rad.addColorStop(0,rgbStr(cOrb,dark?0.24:0.26));
+  rad.addColorStop(0.55,rgbStr(curA,dark?0.10:0.08));
+  rad.addColorStop(1,rgbStr(baseBg,0));
+  bgCtx.fillStyle=rad;
+  bgCtx.fillRect(0,0,bgW,bgH);
+
+  for(let i=0;i<particles.length;i++){
+    const p=particles[i];
+    if(!reducedMotion){
+      p.x+=p.vx*dt;
+      p.y+=p.vy*dt;
+      if(p.x<-0.05)p.x=1.05;
+      if(p.x>1.05)p.x=-0.05;
+      if(p.y<-0.05)p.y=1.05;
+      if(p.y>1.05)p.y=-0.05;
+    }
+    const px=p.x*bgW+smoothPtrX*28*p.depth;
+    const py=p.y*bgH+smoothPtrY*22*p.depth;
+    const pulse=reducedMotion?1:(0.78+0.22*Math.sin(elapsed*1.5+p.phase));
+    const radP=bgCtx.createRadialGradient(px,py,0,px,py,p.r*2.2);
+    const pCol=dark?lerpRgb(curC,[255,255,255],0.35):lerpRgb(curB,curC,0.4);
+    radP.addColorStop(0,rgbStr(pCol,p.alpha*pulse));
+    radP.addColorStop(1,rgbStr(pCol,0));
+    bgCtx.fillStyle=radP;
+    bgCtx.beginPath();
+    bgCtx.arc(px,py,p.r*2.2,0,Math.PI*2);
+    bgCtx.fill();
+  }
+}
+
+/* Three.js 3D Book Setup */
+let renderer,scene,camera,bookGroup,bookMesh,shadowMesh;
+const glCanvas=$('#gl');
+const glWrap=$('#gl-wrap');
+const bookStage=$('#book-stage');
+
+const BASE_ROT_Y=-Math.PI/2+0.26;
+let rotY=BASE_ROT_Y;
+let rotX=0.06;
+let velY=0;
+let autoRotate=!reducedMotion;
+let dragging=false;
+let lastX=0,lastY=0;
+let lastInteractTime=0;
+let introActive=true;
+let flightActive=false;
+let flightT=0;
+let flightStartRect=null;
+
+function makePageEdgeTexture(){
+  const c=document.createElement('canvas');
+  c.width=256;c.height=256;
+  const g=c.getContext('2d');
+  g.fillStyle='#f3ede0';
+  g.fillRect(0,0,256,256);
+  for(let x=0;x<256;x+=3){
+    g.fillStyle=x%6===0?'rgba(155,140,115,0.28)':'rgba(255,255,255,0.45)';
+    g.fillRect(x,0,1.5,256);
+  }
+  const vg=g.createLinearGradient(0,0,256,0);
+  vg.addColorStop(0,'rgba(0,0,0,0.16)');
+  vg.addColorStop(0.12,'rgba(0,0,0,0)');
+  vg.addColorStop(0.88,'rgba(0,0,0,0)');
+  vg.addColorStop(1,'rgba(0,0,0,0.14)');
+  g.fillStyle=vg;
+  g.fillRect(0,0,256,256);
+  const t=new THREE.CanvasTexture(c);
+  t.anisotropy=4;
+  return t;
+}
+
+function makeFloorShadowTexture(){
+  const c=document.createElement('canvas');
+  c.width=256;c.height=256;
+  const g=c.getContext('2d');
+  const r=g.createRadialGradient(128,128,8,128,128,124);
+  r.addColorStop(0,'rgba(8,14,34,0.46)');
+  r.addColorStop(0.45,'rgba(8,14,34,0.20)');
+  r.addColorStop(1,'rgba(8,14,34,0)');
+  g.fillStyle=r;
+  g.fillRect(0,0,256,256);
+  return new THREE.CanvasTexture(c);
+}
+
+function init3D(){
+  if(typeof THREE==='undefined')return;
+  renderer=new THREE.WebGLRenderer({canvas:glCanvas,alpha:true,antialias:true,powerPreference:'high-performance'});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  renderer.outputEncoding=THREE.sRGBEncoding;
+
+  scene=new THREE.Scene();
+  camera=new THREE.PerspectiveCamera(38,1,0.1,40);
+  camera.position.set(0,0.06,4.55);
+  camera.lookAt(0,0,0);
+
+  const ambLight=new THREE.AmbientLight(0xffffff,0.78);
+  scene.add(ambLight);
+
+  const keyLight=new THREE.DirectionalLight(0xffffff,0.68);
+  keyLight.position.set(2.8,4.2,5.0);
+  scene.add(keyLight);
+
+  const rimLight=new THREE.DirectionalLight(0xdbe6ff,0.34);
+  rimLight.position.set(-3.5,1.8,-3.2);
+  scene.add(rimLight);
+
+  const frontTex=new THREE.CanvasTexture(frontDispCv);
+  const backTex=new THREE.CanvasTexture(backDispCv);
+  const spineTex=new THREE.CanvasTexture(spineDispCv);
+  [frontTex,backTex,spineTex].forEach(t=>{
+    t.encoding=THREE.sRGBEncoding;
+    t.anisotropy=4;
+  });
+  window._bookTex={front:frontTex,back:backTex,spine:spineTex};
+
+  const edgeTex=makePageEdgeTexture();
+
+  const frontMat=new THREE.MeshStandardMaterial({map:frontTex,roughness:0.38,metalness:0.04});
+  const backMat=new THREE.MeshStandardMaterial({map:backTex,roughness:0.42,metalness:0.04});
+  const spineMat=new THREE.MeshStandardMaterial({map:spineTex,roughness:0.36,metalness:0.05});
+  const edgeMat=new THREE.MeshStandardMaterial({map:edgeTex,roughness:0.78,metalness:0.0});
+
+  const geo=new THREE.BoxGeometry(0.42,2.56,1.6);
+  bookMesh=new THREE.Mesh(geo,[frontMat,backMat,edgeMat,edgeMat,spineMat,edgeMat]);
+  window._bookMesh=bookMesh;
+
+  bookGroup=new THREE.Group();
+  bookGroup.add(bookMesh);
+  bookGroup.rotation.set(rotX,rotY,0);
+  scene.add(bookGroup);
+
+  const shGeo=new THREE.PlaneGeometry(2.5,1.35);
+  const shMat=new THREE.MeshBasicMaterial({
+    map:makeFloorShadowTexture(),
+    transparent:true,
+    depthWrite:false,
+    opacity:0.72
+  });
+  shadowMesh=new THREE.Mesh(shGeo,shMat);
+  shadowMesh.rotation.x=-Math.PI/2;
+  shadowMesh.position.set(0,-1.50,0);
+  scene.add(shadowMesh);
+
+  resize3D();
+}
+
+function resize3D(){
+  if(!renderer||!camera)return;
+  const rect=glWrap.getBoundingClientRect();
+  const w=Math.max(1,rect.width);
+  const h=Math.max(1,rect.height);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  renderer.setSize(w,h,false);
+  camera.aspect=w/h;
+  camera.updateProjectionMatrix();
+}
+
+/* Splash Screen Transition: Book flies into editor */
+function dismissIntro(){
+  if(!introActive)return;
+  introActive=false;
+  const splash=$('#splash');
+  document.body.classList.remove('intro-active');
+  document.body.classList.add('ui-ready');
+
+  if(reducedMotion||!bookGroup){
+    splash.hidden=true;
+    glWrap.classList.remove('flying');
+    resize3D();
+    return;
+  }
+
+  splash.classList.add('closing');
+  setTimeout(()=>{splash.hidden=true},620);
+
+  flightStartRect={left:0,top:0,width:window.innerWidth,height:window.innerHeight};
+  flightActive=true;
+  flightT=0;
+}
+
+$('#start-btn').onclick=dismissIntro;
+
+/* Pointer Controls on Book Stage (touch-action: pan-y preserved) */
+bookStage.addEventListener('pointerdown',e=>{
+  if(introActive||flightActive)return;
+  dragging=true;
+  lastX=e.clientX;
+  lastY=e.clientY;
+  velY=0;
+  lastInteractTime=performance.now();
+  if(e.pointerType==='mouse'&&bookStage.setPointerCapture){
+    try{bookStage.setPointerCapture(e.pointerId)}catch(err){}
+  }
+},{passive:true});
+
+window.addEventListener('pointermove',e=>{
+  ptrX=(e.clientX/Math.max(1,window.innerWidth)-0.5)*2;
+  ptrY=(e.clientY/Math.max(1,window.innerHeight)-0.5)*2;
+  if(!dragging)return;
+  const dx=e.clientX-lastX;
+  const dy=e.clientY-lastY;
+  lastX=e.clientX;
+  lastY=e.clientY;
+  rotY+=dx*0.009;
+  rotX=Math.max(-0.45,Math.min(0.45,rotX+dy*0.004));
+  velY=dx*0.009;
+  lastInteractTime=performance.now();
+},{passive:true});
+
+function endDrag(){
+  if(!dragging)return;
+  dragging=false;
+  lastInteractTime=performance.now();
+}
+window.addEventListener('pointerup',endDrag,{passive:true});
+window.addEventListener('pointercancel',endDrag,{passive:true});
+
+/* Auto-rotate toggle button */
+function syncRotBtn(){
+  const btn=$('#rot-btn');
+  if(btn)btn.setAttribute('aria-pressed',String(autoRotate));
+}
+$('#rot-btn').onclick=()=>{
+  autoRotate=!autoRotate;
+  if(autoRotate)lastInteractTime=performance.now()-2600;
+  syncRotBtn();
+};
+
+/* Theme cycle button */
+function applyTheme(){
+  const root=document.documentElement;
+  if(S.theme===1)root.dataset.theme='light';
+  else if(S.theme===2)root.dataset.theme='dark';
+  else delete root.dataset.theme;
+  const tb=$('#th-btn');
+  if(tb)tb.textContent=L[S.ui]['th'+S.theme];
+  updateTargetThemeColors();
+}
+$('#th-btn').onclick=()=>{
+  S.theme=(S.theme+1)%3;
+  applyTheme();
+};
+
+rmQuery.addEventListener('change',e=>{
+  reducedMotion=e.matches;
+  if(reducedMotion){
+    autoRotate=false;
+    syncRotBtn();
+  }
+});
+
+/* Main 60fps Animation Loop with Page Visibility Pause */
+let rafId=null;
+let lastTime=performance.now();
+let elapsed=0;
+
+function tick(now){
+  if(document.hidden){
+    rafId=null;
+    return;
+  }
+  const dt=Math.min((now-lastTime)/1000,0.05);
+  lastTime=now;
+  elapsed+=dt;
+
+  renderBg(dt,elapsed);
+
+  if(texFadeT<1){
+    texFadeT=Math.min(1,texFadeT+dt/0.4);
+    const ease=texFadeT<.5?2*texFadeT*texFadeT:1-Math.pow(-2*texFadeT+2,2)/2;
+    syncDisplayTextures(ease);
+  }
+
+  let hopY=0,hopTilt=0;
+  if(hopT<1){
+    hopT=Math.min(1,hopT+dt/0.42);
+    const wave=Math.sin(hopT*Math.PI);
+    hopY=wave*0.14;
+    hopTilt=wave*0.07;
+  }
+
+  let flightSpin=0,flightScale=1,flightOffX=0,flightOffY=0;
+  if(flightActive){
+    flightT=Math.min(1,flightT+dt/0.65);
+    const ease=1-Math.pow(1-flightT,3);
+    flightSpin=(1-ease)*Math.PI*2;
+    flightScale=lerp(1.18,1.0,ease);
+
+    const endR=bookStage.getBoundingClientRect();
+    const startCx=flightStartRect.left+flightStartRect.width/2;
+    const startCy=flightStartRect.top+flightStartRect.height*0.46;
+    const endCx=endR.left+endR.width/2;
+    const endCy=endR.top+endR.height/2;
+
+    const curCx=lerp(startCx,endCx,ease);
+    const curCy=lerp(startCy,endCy,ease);
+    const visH=2*camera.position.z*Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
+    const worldPerPx=visH/Math.max(1,window.innerHeight);
+
+    flightOffX=(curCx-window.innerWidth/2)*worldPerPx;
+    flightOffY=-(curCy-window.innerHeight/2)*worldPerPx;
+
+    if(flightT>=1){
+      flightActive=false;
+      glWrap.classList.remove('flying');
+      resize3D();
+    }
+  }
+
+  if(bookGroup&&renderer&&scene&&camera){
+    if(introActive){
+      if(!reducedMotion)rotY+=0.34*dt;
+    }else if(!dragging){
+      if(Math.abs(velY)>0.0001){
+        rotY+=velY;
+        velY*=Math.pow(0.04,dt);
+      }
+      if(autoRotate&&!reducedMotion&&(now-lastInteractTime>=2500)){
+        rotY+=0.42*dt;
+        rotX+=(0.06-rotX)*Math.min(1,dt*2.5);
+      }
+    }
+
+    const floatY=(reducedMotion||introActive)?0:Math.sin(elapsed*1.65)*0.065;
+    const idleTiltX=reducedMotion?0:Math.sin(elapsed*1.1)*0.032;
+    const idleTiltZ=reducedMotion?0:Math.cos(elapsed*0.92)*0.024;
+    const ptrTiltY=reducedMotion?0:smoothPtrX*0.08;
+    const ptrTiltX=reducedMotion?0:smoothPtrY*0.05;
+
+    bookGroup.position.set(flightOffX,floatY+hopY+flightOffY,0);
+    bookGroup.scale.setScalar(flightScale);
+    bookGroup.rotation.set(
+      rotX+idleTiltX+ptrTiltX,
+      rotY+ptrTiltY+flightSpin,
+      idleTiltZ+hopTilt
+    );
+
+    if(shadowMesh){
+      shadowMesh.visible=!introActive&&!flightActive;
+      const lift=floatY+hopY;
+      const shScale=Math.max(0.65,1-lift*1.35);
+      shadowMesh.scale.set(shScale,shScale,1);
+      shadowMesh.material.opacity=Math.max(0.28,0.72-lift*1.5);
+      shadowMesh.rotation.z=(rotY+Math.PI/2)*0.25;
+    }
+
+    renderer.render(scene,camera);
+  }
+
+  rafId=requestAnimationFrame(tick);
+}
+
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){
+    if(rafId){cancelAnimationFrame(rafId);rafId=null}
+  }else{
+    lastTime=performance.now();
+    if(!rafId)rafId=requestAnimationFrame(tick);
+  }
+});
+
+window.addEventListener('resize',()=>{
+  resizeBg();
+  resize3D();
+});
+
+/* UI Sync & Localization */
+function sync(){
+  const T=S.tx[S.cl];
+  $('#it').value=T[0];$('#is').value=T[1];$('#ia').value=T[2];$('#fs').value=S.f;$('#iz').value=S.z;
+  $('#tc').value=S.c;$('#fr').checked=S.fr;$('#c1').value=S.a;$('#c2').value=S.b;$('#dk').value=S.dk;
+}
+
+function R(){
+  const l=L[S.ui],li=LG.indexOf(S.ui);
+  document.documentElement.lang=S.ui;
+  document.querySelectorAll('[data-i]').forEach(e=>e.textContent=l[e.dataset.i]);
+  const setUiLang=v=>{
+    S.ui=v;
+    if(introActive){S.cl=v;sync();draw(true)}
+    R();
+  };
+  seg('#uil',LG.map((k,i)=>[LN[i],k]),S.ui,setUiLang);
+  seg('#sp-uil',LG.map((k,i)=>[LN[i],k]),S.ui,setUiLang);
+  seg('#tabs',[l.tpl,l.txt,l.bg,l.sz].map((x,i)=>[x,i]),S.tab,v=>{S.tab=v;R()});
+  document.querySelectorAll('.panel').forEach((p,i)=>p.hidden=i!==S.tab);
+  $('#tg').replaceChildren(...TPL.map((o,i)=>{
+    const b=E('button',{type:'button',className:'tp',textContent:o.n[li]});
+    b.style.cssText=`background:linear-gradient(135deg,${o.a},${o.b});color:${o.c}`;
+    b.setAttribute('aria-pressed',i===S.tp);b.onclick=()=>tpl(i);return b}));
+  seg('#cll',LG.map((k,i)=>[LN[i],k]),S.cl,v=>{S.cl=v;sync();R();triggerTexTransition(false)});
+  seg('#pg',[l.p0,l.p1,l.p2].map((x,i)=>[x,i]),S.po,v=>{S.po=v;R();draw(false)});
+  seg('#sg',P.map((p,i)=>[l['s'+i]+' '+p[0]+'×'+p[1],i]),S.sz,v=>{S.sz=v;R();draw(false)});
+  const tb=$('#th-btn');
+  if(tb)tb.textContent=l['th'+S.theme];
+  syncRotBtn();
+}
+
+function tpl(i){
+  const o=TPL[i];
+  Object.assign(S,{tp:i,a:o.a,b:o.b,c:o.c,f:o.f,fr:!!o.r});
+  updateTargetThemeColors();
+  sync();R();
+  triggerTexTransition(true);
+}
+
+let msgTimer=null;
+function say(s){
+  const m=$('#msg');
+  m.textContent='✓ '+s;
+  m.classList.add('show');
+  clearTimeout(msgTimer);
+  msgTimer=setTimeout(()=>{m.classList.remove('show')},3200);
+}
+
+FONTS.forEach((f,i)=>$('#fs').add(new Option(f.n,i)));
+$('#it').oninput=e=>{S.tx[S.cl][0]=e.target.value;draw(false)};
+$('#is').oninput=e=>{S.tx[S.cl][1]=e.target.value;draw(false)};
+$('#ia').oninput=e=>{S.tx[S.cl][2]=e.target.value;draw(false)};
+$('#fs').onchange=e=>{S.f=+e.target.value;triggerTexTransition(false)};
+$('#iz').oninput=e=>{S.z=+e.target.value;draw(false)};
+$('#tc').oninput=e=>{S.c=e.target.value;triggerTexTransition(false)};
+$('#fr').onchange=e=>{S.fr=e.target.checked;draw(false)};
+$('#c1').oninput=e=>{S.a=e.target.value;updateTargetThemeColors();triggerTexTransition(false)};
+$('#c2').oninput=e=>{S.b=e.target.value;updateTargetThemeColors();triggerTexTransition(false)};
+$('#dk').oninput=e=>{S.dk=+e.target.value;draw(false)};
+$('#rm').onclick=()=>{S.img=null;draw(false)};
+$('#fi').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader;
+  r.onload=()=>{const im=new Image;im.onload=()=>{S.img=im;draw(false)};im.src=r.result};
+  r.readAsDataURL(f);e.target.value='';
+};
+$('#sv').onclick=()=>cv.toBlob(async b=>{
+  let dl=null;
+  try{dl=window.claude&&claude.use?await claude.use('downloads'):null}catch(e){}
+  if(dl){
+    try{await dl.save({filename:'cover-'+S.cl+'.png',data:b});say(L[S.ui].saved);return}
+    catch(e){if(e&&e.code==='declined')return}
+  }
+  $('#out').src=cv.toDataURL('image/png');
+  $('#ow').hidden=false;
+  $('#ow').scrollIntoView({behavior:reducedMotion?'auto':'smooth'});
+  say(L[S.ui].saved);
+},'image/png');
+
+/* Initialize Everything */
+applyTheme();
+tpl(0);
+init3D();
+rafId=requestAnimationFrame(tick);
+</script>
+</body>
+</html>
